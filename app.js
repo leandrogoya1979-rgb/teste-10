@@ -196,17 +196,15 @@ function addCliente() {
 }
 
 function removeCliente(id) {
-  if (!confirm('Excluir este cliente?')) return;
   Store.removeCliente(id);
-  showToast('Cliente removido', 'success');
+  showToast('🗑 Cliente removido', 'success');
   render();
 }
 
 // ── Apontamentos ─────────────────────────────────────────────────────────────
 function removeApontamento(id) {
-  if (!confirm('Excluir este apontamento?')) return;
   Store.removeApontamento(id);
-  showToast('Apontamento removido', 'success');
+  showToast('🗑 Apontamento removido', 'success');
   render();
 }
 
@@ -263,3 +261,144 @@ function showToast(msg, type = 'success') {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && getRoute() === 'login' && document.getElementById('login-nome')) doLogin();
 });
+
+// ── Excel Import ──────────────────────────────────────────────────────────────
+let _xlData = []; // holds parsed rows pending confirmation
+
+// Normalize header names: remove accents, lowercase, trim
+function xlNorm(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+// Find column index by possible aliases
+function xlCol(headers, ...aliases) {
+  for (const a of aliases) {
+    const i = headers.findIndex(h => xlNorm(h) === xlNorm(a));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function xlDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) xlRead(file);
+}
+
+function xlRead(file) {
+  if (!file) return;
+  if (!window.XLSX) { showToast('Biblioteca Excel não carregada', 'error'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (raw.length < 2) { showToast('Planilha vazia ou sem dados', 'error'); return; }
+
+      const headers = raw[0].map(String);
+      const rows = raw.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+      const tipo = document.getElementById('xl-tipo')?.value || 'clientes';
+
+      _xlData = { tipo, headers, rows };
+      xlShowPreview(tipo, headers, rows);
+    } catch(err) {
+      showToast('Erro ao ler arquivo: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function xlShowPreview(tipo, headers, rows) {
+  const preview = document.getElementById('xl-preview');
+  const title = document.getElementById('xl-preview-title');
+  const table = document.getElementById('xl-preview-table');
+  if (!preview) return;
+
+  const shown = rows.slice(0, 10);
+  const hHtml = headers.map(h => `<th>${h}</th>`).join('');
+  const rHtml = shown.map(r =>
+    `<tr>${headers.map((_,i) => `<td>${r[i] ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+
+  title.textContent = `Pré-visualização: ${rows.length} linha(s) detectadas — tipo: ${tipo}`;
+  table.innerHTML = `<table><thead><tr>${hHtml}</tr></thead><tbody>${rHtml}</tbody></table>`;
+  if (rows.length > 10) {
+    table.innerHTML += `<div style="font-size:12px;color:var(--text-muted);margin-top:8px">… e mais ${rows.length - 10} linha(s) ocultas</div>`;
+  }
+  preview.style.display = 'block';
+}
+
+function xlCancelar() {
+  _xlData = [];
+  const p = document.getElementById('xl-preview');
+  if (p) p.style.display = 'none';
+  const fi = document.getElementById('xl-file');
+  if (fi) fi.value = '';
+}
+
+function xlImportar() {
+  if (!_xlData || !_xlData.rows) { showToast('Nenhum dado para importar', 'error'); return; }
+  const { tipo, headers, rows } = _xlData;
+
+  if (tipo === 'clientes') {
+    const iNome = xlCol(headers, 'Nome', 'Cliente', 'Razao Social', 'Razão Social', 'name');
+    const iMens = xlCol(headers, 'Mensalidade', 'Valor', 'Plano', 'mensalidade');
+    const iTMF  = xlCol(headers, 'TMF', 'Fiscal', 'Tempo Fiscal');
+    const iTMC  = xlCol(headers, 'TMC', 'Contabil', 'Contábil', 'Tempo Contabil');
+    const iTMP  = xlCol(headers, 'TMP', 'Pessoal', 'Tempo Pessoal', 'DP', 'RH');
+
+    if (iNome < 0) { showToast('Coluna "Nome" não encontrada', 'error'); return; }
+
+    let count = 0;
+    rows.forEach(r => {
+      const nome = String(r[iNome] ?? '').trim();
+      if (!nome) return;
+      const mensalidade = parseFloat(String(r[iMens] ?? '').replace(',','.')) || 0;
+      const tmf = parseFloat(String(r[iTMF] ?? '').replace(',','.')) || 0;
+      const tmc = parseFloat(String(r[iTMC] ?? '').replace(',','.')) || 0;
+      const tmp = parseFloat(String(r[iTMP] ?? '').replace(',','.')) || 0;
+      const ttc = tmf + tmc + tmp;
+      Store.addCliente({ nome, mensalidade, tmf, tmc, tmp, ttc, horasVendidas: ttc });
+      count++;
+    });
+    showToast(`✅ ${count} cliente(s) importado(s)!`, 'success');
+
+  } else {
+    const iCliente = xlCol(headers, 'Cliente', 'Nome', 'Empresa');
+    const iColab   = xlCol(headers, 'Colaborador', 'Usuario', 'Usuário', 'User', 'Funcionario');
+    const iMin     = xlCol(headers, 'Minutos', 'Tempo', 'Duracao', 'Duração', 'Horas');
+    const iData    = xlCol(headers, 'Data', 'Date', 'Dia');
+
+    if (iCliente < 0) { showToast('Coluna "Cliente" não encontrada', 'error'); return; }
+
+    const clientes = Store.getClientes();
+    let count = 0, skip = 0;
+    rows.forEach(r => {
+      const nomeCliente = String(r[iCliente] ?? '').trim();
+      if (!nomeCliente) return;
+      const cliente = clientes.find(c => xlNorm(c.nome) === xlNorm(nomeCliente));
+      if (!cliente) { skip++; return; }
+
+      let minutos = parseFloat(String(r[iMin] ?? '').replace(',','.')) || 0;
+      // If column is "Horas", convert to minutes
+      const hColName = xlNorm(headers[iMin] || '');
+      if (hColName === 'horas' || hColName === 'hora') minutos = minutos * 60;
+
+      const colaborador = String(r[iColab] ?? 'Importado').trim() || 'Importado';
+      const rawDate = r[iData];
+      const data = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+      Store.addApontamento({ clienteId: cliente.id, colaborador, minutos: Math.round(minutos), data });
+      count++;
+    });
+
+    let msg = `✅ ${count} apontamento(s) importado(s)!`;
+    if (skip > 0) msg += ` (${skip} ignorados — cliente não encontrado)`;
+    showToast(msg, 'success');
+  }
+
+  xlCancelar();
+  render();
+}

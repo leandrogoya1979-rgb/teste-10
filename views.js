@@ -382,7 +382,59 @@ function viewRelatorios() {
   const totMins = rows.reduce((s,r)=>s+r.mins,0);
 
   return `
-  ${ch === 0 ? `<div class="card" style="margin-bottom:16px;border-color:rgba(245,200,66,0.3)"><div style="display:flex;align-items:center;gap:12px;padding:4px"><span style="font-size:24px">⚠️</span><div><div style="font-weight:600">Configure o custo do escritório primeiro</div><div style="font-size:13px;color:var(--text-muted)">Sem o custo/hora, o cálculo de rentabilidade não é possível.</div></div><button class="btn btn-primary" onclick="navigate('config')" style="margin-left:auto">Configurar</button></div></div>` : ''}
+  ${ch === 0 ? `<div class="card" style="margin-bottom:16px;border-color:rgba(245,200,66,0.3)"><div style="display:flex;align-items:center;gap:12px;padding:4px"><span style="font-size:24px">⚠️</span><div><div style="font-weight:600">Configure o custo do escritório primeiro</div><div style="font-size:13px;color:var(--text-muted)">Sem o custo/hora, o cálculo não é possível.</div></div><button class="btn btn-primary" onclick="navigate('config')" style="margin-left:auto">Configurar</button></div></div>` : ''}
+
+  <!-- ── Excel Import Card ── -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📂 Importar via Excel</div>
+        <div class="section-sub">Importe clientes ou apontamentos de uma planilha .xlsx / .xls</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="xl-tipo" class="form-control" style="width:auto;padding:8px 14px">
+          <option value="clientes">📋 Importar Clientes</option>
+          <option value="apontamentos">⏱ Importar Apontamentos</option>
+        </select>
+        <button class="btn btn-secondary" onclick="document.getElementById('xl-dica').classList.toggle('hidden')">💡 Ver colunas</button>
+      </div>
+    </div>
+
+    <div id="xl-dica" class="hidden" style="background:rgba(245,200,66,0.06);border:1px solid rgba(245,200,66,0.2);border-radius:10px;padding:16px;margin-bottom:16px;font-size:13px">
+      <div style="font-weight:700;color:var(--gold);margin-bottom:10px">📌 Formato esperado (1ª linha = cabeçalho)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-weight:600;color:#60a5fa;margin-bottom:6px">📋 Clientes:</div>
+          <code style="display:block;background:rgba(0,0,0,0.35);padding:10px 12px;border-radius:6px;line-height:2;color:var(--text-primary)">Nome | Mensalidade | TMF | TMC | TMP</code>
+        </div>
+        <div>
+          <div style="font-weight:600;color:#34d399;margin-bottom:6px">⏱ Apontamentos:</div>
+          <code style="display:block;background:rgba(0,0,0,0.35);padding:10px 12px;border-radius:6px;line-height:2;color:var(--text-primary)">Cliente | Colaborador | Minutos | Data</code>
+        </div>
+      </div>
+      <div style="color:var(--text-muted);margin-top:10px;font-size:12px">⚠️ Nomes de colunas detectados automaticamente (aceita com ou sem acentos, maiúsculas e minúsculas).</div>
+    </div>
+
+    <label for="xl-file" class="xl-dropzone" ondragover="event.preventDefault()" ondrop="xlDrop(event)">
+      <div class="xl-drop-icon">📊</div>
+      <div class="xl-drop-title">Arraste o arquivo Excel aqui</div>
+      <div class="xl-drop-sub">ou clique para selecionar — .xlsx / .xls</div>
+      <input id="xl-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlRead(this.files[0])" />
+    </label>
+
+    <div id="xl-preview" style="display:none;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+        <div id="xl-preview-title" style="font-weight:700;font-size:15px;color:var(--text-primary)"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="xlCancelar()">✖ Cancelar</button>
+          <button class="btn btn-primary" onclick="xlImportar()">✅ Confirmar Importação</button>
+        </div>
+      </div>
+      <div id="xl-preview-table" class="table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- ── Rentability Table ── -->
   <div class="card">
     <div class="section-header">
       <div><div class="section-title">📈 Confronto de Rentabilidade</div><div class="section-sub">Custo/hora: ${fmt.brl(ch)} | Período completo</div></div>
@@ -410,3 +462,4 @@ function viewRelatorios() {
     </table></div>` : `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Nenhum dado para exibir</div><div class="empty-sub">Cadastre clientes e registre apontamentos para ver os relatórios</div></div>`}
   </div>`;
 }
+

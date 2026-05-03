@@ -596,3 +596,25 @@ td { padding: 14px 16px; font-size: 14px; color: var(--text-primary); vertical-a
   .ttc-inputs .form-group { min-width: unset; }
   .ttc-legend { gap: 4px; }
 }
+
+/* ── Excel Dropzone ── */
+.xl-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+  background: rgba(255,255,255,0.02);
+}
+.xl-dropzone:hover {
+  border-color: var(--gold);
+  background: var(--gold-glow);
+}
+.xl-drop-icon { font-size: 40px; margin-bottom: 10px; }
+.xl-drop-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.xl-drop-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+.hidden { display: none !important; }
+
