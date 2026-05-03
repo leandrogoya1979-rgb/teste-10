@@ -408,12 +408,26 @@ function xlImportar() {
   const { tipo, headers, rows } = _xlData;
 
   if (tipo === 'clientes') {
-    // ── Aliases ampliados para coluna de nome ──
-    const iNome = xlCol(headers,
+    // ── Detectar coluna de nome ──
+    // Passo 1: aliases conhecidos
+    let iNome = xlCol(headers,
       'Nome', 'Cliente', 'Empresa', 'Nome Empresa', 'Nome da Empresa',
       'Razao Social', 'Razão Social', 'Razao', 'Fantasia', 'Nome Fantasia',
-      'name', 'company', 'client'
+      'name', 'company', 'client', 'razaosocial', 'nomefantasia'
     );
+
+    // Passo 2: se não achou, usa a coluna com maior comprimento médio de texto
+    // (a coluna de nome sempre tem strings mais longas que CNPJ ou valores numéricos)
+    if (iNome < 0) {
+      const avgLen = headers.map((_, col) => {
+        const vals = rows.slice(0, 20).map(r => String(r[col] ?? '').trim());
+        const total = vals.reduce((s, v) => s + v.length, 0);
+        return total / (vals.length || 1);
+      });
+      iNome = avgLen.indexOf(Math.max(...avgLen));
+      showToast(`⚠️ Coluna detectada automaticamente: "${headers[iNome]}"`, 'success');
+    }
+
     // ── Aliases para mensalidade / plano ──
     const iMens = xlCol(headers,
       'Mensalidade', 'Valor', 'Plano', 'Honorario', 'Honorário',
@@ -423,31 +437,6 @@ function xlImportar() {
     const iTMC = xlCol(headers, 'TMC', 'Contabil', 'Contábil', 'Tempo Contabil', 'Hrs Contabil', 'Horas Contabil');
     const iTMP = xlCol(headers, 'TMP', 'Pessoal', 'DP', 'RH', 'Tempo Pessoal', 'Hrs Pessoal', 'Horas Pessoal');
 
-    if (iNome < 0) {
-      // Last resort: use first non-empty column
-      const firstNonEmpty = headers.findIndex(h => String(h).trim() !== '');
-      if (firstNonEmpty >= 0) {
-        showToast(`⚠️ Usando coluna "${headers[firstNonEmpty]}" como nome do cliente`, 'success');
-        // Re-run import with first column as name
-        const iNomeFallback = firstNonEmpty;
-        let count = 0;
-        rows.forEach(r => {
-          const nome = String(r[iNomeFallback] ?? '').trim();
-          if (!nome) return;
-          const mensalidade = xlParseNum(r[iMens]);
-          const tmf = xlParseNum(r[iTMF]);
-          const tmc = xlParseNum(r[iTMC]);
-          const tmp = xlParseNum(r[iTMP]);
-          const ttc = tmf + tmc + tmp;
-          Store.addCliente({ nome, mensalidade, tmf, tmc, tmp, ttc, horasVendidas: ttc });
-          count++;
-        });
-        showToast(`✅ ${count} cliente(s) importado(s)!`, 'success');
-        xlCancelar(); render(); return;
-      }
-      showToast(`Cabeçalhos encontrados: ${headers.slice(0,8).join(' | ')}`, 'error');
-      return;
-    }
 
     let count = 0;
     rows.forEach(r => {
