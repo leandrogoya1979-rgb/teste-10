@@ -201,6 +201,14 @@ function removeCliente(id) {
   render();
 }
 
+function removeAllClientes() {
+  const total = Store.getClientes().length;
+  if (total === 0) return;
+  Store._set('bpo_clientes', []);
+  showToast(`🗑 ${total} cliente(s) removido(s)`, 'success');
+  render();
+}
+
 // ── Apontamentos ─────────────────────────────────────────────────────────────
 function removeApontamento(id) {
   Store.removeApontamento(id);
@@ -383,11 +391,16 @@ function xlCancelar() {
   if (fi) fi.value = '';
 }
 
-// Safe number parser — ignores Date objects (SheetJS date serialization artifact)
+// Safe number parser — converts Excel time fractions to hours
+// Excel stores time as fraction of a day: 1h = 1/24 ≈ 0.04166...
 function xlParseNum(val) {
   if (val instanceof Date) return 0;
   if (val === null || val === undefined || val === '') return 0;
-  return parseFloat(String(val).replace(',', '.')) || 0;
+  const n = parseFloat(String(val).replace(',', '.'));
+  if (isNaN(n)) return 0;
+  // If value is between 0 and 1 (exclusive), it's an Excel time fraction → convert to hours
+  if (n > 0 && n < 1) return Math.round(n * 24 * 100) / 100;
+  return Math.round(n * 100) / 100;
 }
 
 function xlImportar() {

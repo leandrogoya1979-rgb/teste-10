@@ -3,6 +3,8 @@
 const fmt = {
   brl: v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0),
   hrs: m => { const h=Math.floor((m||0)/60),mm=String((m||0)%60).padStart(2,'0'); return `${h}h ${mm}m`; },
+  // Format decimal hours: 4 → "4h", 4.5 → "4.5h", 0 → "0h"
+  h: v => { const n = Math.round((Number(v)||0) * 100) / 100; return n % 1 === 0 ? n + 'h' : n.toFixed(1) + 'h'; },
   date: d => d ? new Date(d).toLocaleDateString('pt-BR') : '-',
   pct: (a,b) => b>0 ? ((a/b)*100).toFixed(0)+'%' : '0%'
 };
@@ -284,6 +286,7 @@ function viewClientes() {
   <div class="card">
     <div class="section-header">
       <div><div class="section-title">🏢 Carteira de Clientes</div><div class="section-sub">${list.length} cliente(s) cadastrado(s)</div></div>
+      ${list.length ? `<button class="btn btn-danger" onclick="removeAllClientes()" style="font-size:13px">🗑 Remover Todos</button>` : ''}
     </div>
     ${list.length ? `<div class="table-wrap"><table>
       <thead><tr>
@@ -302,10 +305,10 @@ function viewClientes() {
         return `<tr>
           <td><strong>${c.nome}</strong></td>
           <td>${fmt.brl(c.mensalidade)}</td>
-          <td><span class="badge" style="background:rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.25)">${c.tmf||0}h</span></td>
-          <td><span class="badge" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25)">${c.tmc||0}h</span></td>
-          <td><span class="badge" style="background:rgba(244,114,182,0.12);color:#f472b6;border:1px solid rgba(244,114,182,0.25)">${c.tmp||0}h</span></td>
-          <td><span class="badge badge-gold">${ttc}h</span></td>
+          <td><span class="badge" style="background:rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.25)">${fmt.h(c.tmf)}</span></td>
+          <td><span class="badge" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25)">${fmt.h(c.tmc)}</span></td>
+          <td><span class="badge" style="background:rgba(244,114,182,0.12);color:#f472b6;border:1px solid rgba(244,114,182,0.25)">${fmt.h(c.tmp)}</span></td>
+          <td><span class="badge badge-gold">${fmt.h(ttc)}</span></td>
           <td>${fmt.hrs(mins)}</td>
           <td><button class="btn btn-danger btn-icon" onclick="removeCliente('${c.id}')" title="Excluir">🗑</button></td>
         </tr>`;
