@@ -210,32 +210,59 @@ function removeApontamento(id) {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function parseNum(id) {
-  const v = (document.getElementById(id).value || '').replace(',', '.');
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const v = (el.value || '').replace(',', '.');
   return Number(v) || 0;
 }
 
 function saveConfig() {
-  const custoFixo = parseNum('cfg-custo');
-  const horasUteis = parseNum('cfg-horas');
-  if (custoFixo <= 0 || horasUteis <= 0) { showToast('Preencha custo e horas corretamente', 'error'); return; }
-  Store.setConfig({ custoFixo, horasUteis });
+  const custoFixo      = parseNum('cfg-custo');
+  const quantPessoas   = parseNum('cfg-pessoas');
+  const horasPorPessoa = parseNum('cfg-hrspessoa');
+  const percPerdaPessoa= parseNum('cfg-perdapessoa');
+  const percPerdaTime  = parseNum('cfg-perdatime');
+  const markup         = parseNum('cfg-markup');
+
+  if (custoFixo <= 0)      { showToast('Informe o custo total do escritório', 'error'); return; }
+  if (quantPessoas <= 0)   { showToast('Informe a quantidade de pessoas', 'error'); return; }
+  if (horasPorPessoa <= 0) { showToast('Informe as horas por pessoa', 'error'); return; }
+  if (markup <= 0)         { showToast('Informe o markup', 'error'); return; }
+
+  Store.setConfig({ custoFixo, quantPessoas, horasPorPessoa, percPerdaPessoa, percPerdaTime, markup });
   showToast('✅ Configurações salvas!', 'success');
-  // Re-render without navigating away
-  const content = viewConfig();
-  document.querySelector('.page').innerHTML = content;
+  // Re-render config page in-place
+  document.querySelector('.page').innerHTML = viewConfig();
 }
 
 function calcPreview() {
-  const custo = parseFloat(document.getElementById('cfg-custo').value) || 0;
-  const horas = parseFloat(document.getElementById('cfg-horas').value) || 0;
-  const prev = document.getElementById('calc-preview');
-  const val = document.getElementById('calc-val');
-  if (custo > 0 && horas > 0 && prev && val) {
-    prev.style.display = 'flex';
-    val.textContent = fmt.brl(custo / horas);
-  } else if (prev) {
-    prev.style.display = 'none';
-  }
+  const custoFixo      = parseNum('cfg-custo');
+  const quantPessoas   = parseNum('cfg-pessoas');
+  const horasPorPessoa = parseNum('cfg-hrspessoa');
+  const percPerdaPessoa= parseNum('cfg-perdapessoa');
+  const percPerdaTime  = parseNum('cfg-perdatime');
+  const markup         = parseNum('cfg-markup');
+
+  const horasCompanhia   = quantPessoas * horasPorPessoa;
+  const perdaPessoaHoras = horasPorPessoa * percPerdaPessoa / 100;
+  const perdaTimeHoras   = horasCompanhia * percPerdaTime / 100;
+  const horasMinimas     = horasCompanhia - perdaTimeHoras;
+  const custoHora        = horasMinimas > 0 ? custoFixo / horasMinimas : 0;
+  const valorVenda       = custoHora * markup;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  set('res-horascompanhia', horasCompanhia > 0 ? horasCompanhia.toLocaleString('pt-BR') + 'h' : '—');
+  set('res-perdatime',       perdaTimeHoras > 0 ? perdaTimeHoras.toFixed(0) + 'h' : '—');
+  set('res-horasminimas',   horasMinimas > 0 ? horasMinimas.toLocaleString('pt-BR') + 'h' : '—');
+  set('res-custohora',      custoHora > 0 ? fmt.brl(custoHora) : '—');
+  set('res-valorvenda',     valorVenda > 0 ? fmt.brl(valorVenda) : '—');
+  set('res-markup-badge',   markup > 0 ? markup + '×' : '');
+
+  const h1 = document.getElementById('hint-perdapessoa');
+  if (h1) h1.textContent = perdaPessoaHoras > 0 ? `= ${perdaPessoaHoras.toFixed(1)}h por pessoa` : '';
+  const h2 = document.getElementById('hint-perdatime');
+  if (h2) h2.textContent = perdaTimeHoras > 0 ? `= ${perdaTimeHoras.toFixed(0)}h do time` : '';
 }
 
 // ── Sidebar mobile ────────────────────────────────────────────────────────────

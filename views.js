@@ -344,26 +344,141 @@ function viewApontamentos() {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 function viewConfig() {
-  const cfg = Store.getConfig();
-  const ch = Store.getCustoHora();
-  return `<div class="card" style="max-width:520px">
-    <div class="section-header">
-      <div><div class="section-title">⚙️ Custo do Escritório</div><div class="section-sub">Configure os custos fixos e horas produtivas</div></div>
+  const c = Store.getConfig();
+  const r = Store.calcConfig();
+  const num = v => v || '';
+
+  return `
+  <div class="cfg-grid">
+
+    <!-- ── Inputs ── -->
+    <div class="card">
+      <div class="section-header">
+        <div><div class="section-title">⚙️ Custo do Escritório</div><div class="section-sub">Preencha os dados do escritório para calcular o custo por hora</div></div>
+      </div>
+
+      <div class="cfg-section-label">💰 Custo</div>
+      <div class="form-group">
+        <label class="form-label">Custo total do escritório (R$)</label>
+        <input id="cfg-custo" class="form-control" type="number" min="0" placeholder="Ex: 150000"
+          value="${num(c.custoFixo)}" oninput="calcPreview()" />
+        <div class="form-hint">Folha de pagamento, aluguel, sistemas, pró-labore, etc.</div>
+      </div>
+
+      <div class="cfg-section-label" style="margin-top:20px">👥 Equipe</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantidade de pessoas</label>
+          <input id="cfg-pessoas" class="form-control" type="number" min="1" placeholder="Ex: 17"
+            value="${num(c.quantPessoas)}" oninput="calcPreview()" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Horas contratadas por pessoa / mês</label>
+          <input id="cfg-hrspessoa" class="form-control" type="number" min="1" placeholder="Ex: 170"
+            value="${num(c.horasPorPessoa)}" oninput="calcPreview()" />
+        </div>
+      </div>
+
+      <div class="cfg-section-label" style="margin-top:4px">📉 Performance Aceitável</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">% máx. de perda por <strong>pessoa</strong></label>
+          <div class="input-suffix-wrap">
+            <input id="cfg-perdapessoa" class="form-control" type="number" min="0" max="100" placeholder="20"
+              value="${num(c.percPerdaPessoa)}" oninput="calcPreview()" />
+            <span class="input-suffix">%</span>
+          </div>
+          <div class="form-hint cfg-hint-calc" id="hint-perdapessoa">
+            ${r.perdaPessoaHoras > 0 ? `= ${r.perdaPessoaHoras.toFixed(1)}h por pessoa` : ''}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">% máx. de perda do <strong>time</strong></label>
+          <div class="input-suffix-wrap">
+            <input id="cfg-perdatime" class="form-control" type="number" min="0" max="100" placeholder="20"
+              value="${num(c.percPerdaTime)}" oninput="calcPreview()" />
+            <span class="input-suffix">%</span>
+          </div>
+          <div class="form-hint cfg-hint-calc" id="hint-perdatime">
+            ${r.perdaTimeHoras > 0 ? `= ${r.perdaTimeHoras.toFixed(0)}h do time` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section-label" style="margin-top:4px">💹 Markup</div>
+      <div class="form-group" style="max-width:220px">
+        <label class="form-label">Markup de venda da hora</label>
+        <div class="input-suffix-wrap">
+          <input id="cfg-markup" class="form-control" type="number" min="1" max="10" step="0.1" placeholder="2.5"
+            value="${num(c.markup)}" oninput="calcPreview()" />
+          <span class="input-suffix">×</span>
+        </div>
+        <div class="form-hint">Mín. 2 · Máx. 3 (mercado). Acima de 3 = escritório nichado / especialista.</div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px" onclick="saveConfig()">
+        💾 Salvar Configurações
+      </button>
     </div>
-    <div class="form-group"><label class="form-label">Custo Fixo Mensal Total (R$)</label>
-      <input id="cfg-custo" class="form-control" type="number" min="0" placeholder="Ex: 25000" value="${cfg.custoFixo||''}" oninput="calcPreview()" /></div>
-    <div class="form-group"><label class="form-label">Horas Úteis Produtivas no Mês</label>
-      <input id="cfg-horas" class="form-control" type="number" min="1" placeholder="Ex: 800" value="${cfg.horasUteis||''}" oninput="calcPreview()" /></div>
-    <div id="calc-preview" class="calc-result" style="${ch>0?'':'display:none'}">
-      <div class="calc-icon">💡</div>
-      <div>
-        <div class="calc-label">Custo da Hora Calculado</div>
-        <div class="calc-value" id="calc-val">${fmt.brl(ch)}</div>
+
+    <!-- ── Calculated Results ── -->
+    <div id="cfg-results-col">
+      <div class="card cfg-results-card">
+        <div class="section-title" style="margin-bottom:20px">📊 Resultado Calculado</div>
+
+        <div class="cfg-result-row">
+          <div class="cfg-result-label">Horas contratadas pela companhia</div>
+          <div class="cfg-result-value" id="res-horascompanhia">${r.horasCompanhia > 0 ? r.horasCompanhia.toLocaleString('pt-BR') + 'h' : '—'}</div>
+        </div>
+        <div class="cfg-result-row">
+          <div class="cfg-result-label">Perda máx. de performance do time</div>
+          <div class="cfg-result-value secondary" id="res-perdatime">${r.perdaTimeHoras > 0 ? r.perdaTimeHoras.toFixed(0) + 'h' : '—'}</div>
+        </div>
+
+        <div class="cfg-divider-line"></div>
+
+        <div class="cfg-result-row redflag-row" id="res-redflag-row">
+          <div>
+            <div class="cfg-result-label">🚩 Horas mínimas performadas</div>
+            <div class="cfg-result-sublabel">Abaixo disso = red flag na operação</div>
+          </div>
+          <div class="cfg-result-value redflag" id="res-horasminimas">${r.horasMinimas > 0 ? r.horasMinimas.toLocaleString('pt-BR') + 'h' : '—'}</div>
+        </div>
+
+        <div class="cfg-divider-line"></div>
+
+        <div class="cfg-result-row highlight-row">
+          <div class="cfg-result-label large">💡 Custo hora do Escritório</div>
+          <div class="cfg-result-value gold large" id="res-custohora">${r.custoHora > 0 ? fmt.brl(r.custoHora) : '—'}</div>
+        </div>
+
+        <div class="cfg-result-row" style="margin-top:16px;align-items:flex-start">
+          <div>
+            <div class="cfg-result-label">Valor de venda da hora</div>
+            <div class="cfg-result-sublabel">custo × markup</div>
+          </div>
+          <div style="text-align:right">
+            <div class="cfg-result-value green" id="res-valorvenda">${r.valorVenda > 0 ? fmt.brl(r.valorVenda) : '—'}</div>
+            <div class="cfg-markup-badge" id="res-markup-badge">${c.markup ? c.markup + '×' : ''}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.04)">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="font-size:22px">ℹ️</span>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+            <strong style="color:var(--text-primary)">Markup de mercado:</strong><br>
+            • Mínimo <strong>2×</strong> · Máximo <strong>3×</strong> para escritórios gerais<br>
+            • Acima de <strong>3×</strong> — somente escritórios nichados e especialistas de verdade
+          </div>
+        </div>
       </div>
     </div>
-    <button class="btn btn-primary" style="margin-top:20px;width:100%;justify-content:center" onclick="saveConfig()">💾 Salvar Configurações</button>
+
   </div>`;
 }
+
 
 // ── Relatórios ───────────────────────────────────────────────────────────────
 function viewRelatorios() {

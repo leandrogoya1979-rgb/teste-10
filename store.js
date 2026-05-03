@@ -17,12 +17,31 @@ const Store = {
 
   // Config
   getConfig() {
-    return this._get(KEYS.config) || { custoFixo: 0, horasUteis: 0 };
+    return this._get(KEYS.config) || {
+      custoFixo: 0,
+      quantPessoas: 0,
+      horasPorPessoa: 0,
+      percPerdaPessoa: 20,
+      percPerdaTime: 20,
+      markup: 2.5
+    };
   },
   setConfig(c) { this._set(KEYS.config, c); },
-  getCustoHora() {
+
+  // Derived calculations from config
+  calcConfig() {
     const c = this.getConfig();
-    return c.horasUteis > 0 ? c.custoFixo / c.horasUteis : 0;
+    const horasCompanhia   = (c.quantPessoas || 0) * (c.horasPorPessoa || 0);
+    const perdaPessoaHoras = (c.horasPorPessoa || 0) * (c.percPerdaPessoa || 0) / 100;
+    const perdaTimeHoras   = horasCompanhia * (c.percPerdaTime || 0) / 100;
+    const horasMinimas     = horasCompanhia - perdaTimeHoras;
+    const custoHora        = horasMinimas > 0 ? (c.custoFixo || 0) / horasMinimas : 0;
+    const valorVenda       = custoHora * (c.markup || 0);
+    return { ...c, horasCompanhia, perdaPessoaHoras, perdaTimeHoras, horasMinimas, custoHora, valorVenda };
+  },
+
+  getCustoHora() {
+    return this.calcConfig().custoHora;
   },
 
   // Clientes

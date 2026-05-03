@@ -618,6 +618,104 @@ td { padding: 14px 16px; font-size: 14px; color: var(--text-primary); vertical-a
 
 .hidden { display: none !important; }
 
+/* ── Config Page Layout ── */
+.cfg-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+.cfg-section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-muted);
+  margin-bottom: 12px; margin-top: 4px;
+}
+
+.form-hint {
+  font-size: 12px; color: var(--text-muted); margin-top: 5px;
+}
+
+.cfg-hint-calc {
+  color: var(--gold) !important; font-weight: 600;
+}
+
+.input-suffix-wrap {
+  position: relative;
+}
+
+.input-suffix-wrap .form-control {
+  padding-right: 36px;
+}
+
+.input-suffix {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; font-weight: 700; color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ── Results Panel ── */
+.cfg-results-card { position: sticky; top: 80px; }
+
+.cfg-result-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; gap: 12px;
+}
+
+.cfg-result-label {
+  font-size: 13px; color: var(--text-secondary); font-weight: 500;
+}
+.cfg-result-label.large { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+.cfg-result-sublabel {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+}
+
+.cfg-result-value {
+  font-size: 16px; font-weight: 800; color: var(--text-primary);
+  white-space: nowrap;
+}
+.cfg-result-value.secondary { color: var(--text-secondary); font-size: 15px; }
+.cfg-result-value.gold  { color: var(--gold); font-size: 22px; }
+.cfg-result-value.green { color: var(--green); font-size: 20px; }
+.cfg-result-value.redflag { color: var(--red); font-size: 17px; }
+.cfg-result-value.large { font-size: 22px; }
+
+.cfg-divider-line {
+  height: 1px; background: var(--border); margin: 8px 0;
+}
+
+.redflag-row {
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.15);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 4px 0;
+}
+
+.highlight-row {
+  background: var(--gold-glow);
+  border: 1px solid rgba(245,200,66,0.2);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 4px 0;
+}
+
+.cfg-markup-badge {
+  font-size: 12px; font-weight: 700; color: var(--gold);
+  background: var(--gold-glow);
+  border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 20px; padding: 2px 8px;
+  display: inline-block; margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .cfg-grid { grid-template-columns: 1fr; }
+  .cfg-results-card { position: static; }
+}
+
+
+
 /* ── Tutorial Bot ── */
 #tut-fab {
   position: fixed;
