@@ -292,15 +292,31 @@ document.addEventListener('keydown', e => {
 // ── Excel Import ──────────────────────────────────────────────────────────────
 let _xlData = []; // holds parsed rows pending confirmation
 
-// Normalize header names: remove accents, lowercase, trim
+// Normalize: remove accents, spaces, special chars, lowercase
 function xlNorm(s) {
-  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  return String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/[^a-z0-9]/gi, '')       // remove spaces, punctuation, etc.
+    .toLowerCase()
+    .trim();
 }
 
-// Find column index by possible aliases
+// Find column by aliases — exact first, then partial (contains)
 function xlCol(headers, ...aliases) {
+  // Pass 1: exact normalized match
   for (const a of aliases) {
-    const i = headers.findIndex(h => xlNorm(h) === xlNorm(a));
+    const na = xlNorm(a);
+    const i = headers.findIndex(h => xlNorm(h) === na);
+    if (i >= 0) return i;
+  }
+  // Pass 2: header contains alias OR alias contains header
+  for (const a of aliases) {
+    const na = xlNorm(a);
+    const i = headers.findIndex(h => {
+      const nh = xlNorm(h);
+      return nh.includes(na) || na.includes(nh);
+    });
     if (i >= 0) return i;
   }
   return -1;
@@ -319,7 +335,8 @@ function xlRead(file) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     try {
-      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+      // cellDates:false keeps numbers as numbers (prevents small ints like 34 from becoming dates)
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
@@ -366,27 +383,67 @@ function xlCancelar() {
   if (fi) fi.value = '';
 }
 
+// Safe number parser — ignores Date objects (SheetJS date serialization artifact)
+function xlParseNum(val) {
+  if (val instanceof Date) return 0;
+  if (val === null || val === undefined || val === '') return 0;
+  return parseFloat(String(val).replace(',', '.')) || 0;
+}
+
 function xlImportar() {
   if (!_xlData || !_xlData.rows) { showToast('Nenhum dado para importar', 'error'); return; }
   const { tipo, headers, rows } = _xlData;
 
   if (tipo === 'clientes') {
-    const iNome = xlCol(headers, 'Nome', 'Cliente', 'Razao Social', 'Razão Social', 'name');
-    const iMens = xlCol(headers, 'Mensalidade', 'Valor', 'Plano', 'mensalidade');
-    const iTMF  = xlCol(headers, 'TMF', 'Fiscal', 'Tempo Fiscal');
-    const iTMC  = xlCol(headers, 'TMC', 'Contabil', 'Contábil', 'Tempo Contabil');
-    const iTMP  = xlCol(headers, 'TMP', 'Pessoal', 'Tempo Pessoal', 'DP', 'RH');
+    // ── Aliases ampliados para coluna de nome ──
+    const iNome = xlCol(headers,
+      'Nome', 'Cliente', 'Empresa', 'Nome Empresa', 'Nome da Empresa',
+      'Razao Social', 'Razão Social', 'Razao', 'Fantasia', 'Nome Fantasia',
+      'name', 'company', 'client'
+    );
+    // ── Aliases para mensalidade / plano ──
+    const iMens = xlCol(headers,
+      'Mensalidade', 'Valor', 'Plano', 'Honorario', 'Honorário',
+      'Honorario Mensal', 'Honorário Mensal', 'Valor Mensal', 'Fee'
+    );
+    const iTMF = xlCol(headers, 'TMF', 'Fiscal', 'Tempo Fiscal', 'Hrs Fiscal', 'Horas Fiscal');
+    const iTMC = xlCol(headers, 'TMC', 'Contabil', 'Contábil', 'Tempo Contabil', 'Hrs Contabil', 'Horas Contabil');
+    const iTMP = xlCol(headers, 'TMP', 'Pessoal', 'DP', 'RH', 'Tempo Pessoal', 'Hrs Pessoal', 'Horas Pessoal');
 
-    if (iNome < 0) { showToast('Coluna "Nome" não encontrada', 'error'); return; }
+    if (iNome < 0) {
+      // Last resort: use first non-empty column
+      const firstNonEmpty = headers.findIndex(h => String(h).trim() !== '');
+      if (firstNonEmpty >= 0) {
+        showToast(`⚠️ Usando coluna "${headers[firstNonEmpty]}" como nome do cliente`, 'success');
+        // Re-run import with first column as name
+        const iNomeFallback = firstNonEmpty;
+        let count = 0;
+        rows.forEach(r => {
+          const nome = String(r[iNomeFallback] ?? '').trim();
+          if (!nome) return;
+          const mensalidade = xlParseNum(r[iMens]);
+          const tmf = xlParseNum(r[iTMF]);
+          const tmc = xlParseNum(r[iTMC]);
+          const tmp = xlParseNum(r[iTMP]);
+          const ttc = tmf + tmc + tmp;
+          Store.addCliente({ nome, mensalidade, tmf, tmc, tmp, ttc, horasVendidas: ttc });
+          count++;
+        });
+        showToast(`✅ ${count} cliente(s) importado(s)!`, 'success');
+        xlCancelar(); render(); return;
+      }
+      showToast(`Cabeçalhos encontrados: ${headers.slice(0,8).join(' | ')}`, 'error');
+      return;
+    }
 
     let count = 0;
     rows.forEach(r => {
       const nome = String(r[iNome] ?? '').trim();
       if (!nome) return;
-      const mensalidade = parseFloat(String(r[iMens] ?? '').replace(',','.')) || 0;
-      const tmf = parseFloat(String(r[iTMF] ?? '').replace(',','.')) || 0;
-      const tmc = parseFloat(String(r[iTMC] ?? '').replace(',','.')) || 0;
-      const tmp = parseFloat(String(r[iTMP] ?? '').replace(',','.')) || 0;
+      const mensalidade = xlParseNum(r[iMens]);
+      const tmf = xlParseNum(r[iTMF]);
+      const tmc = xlParseNum(r[iTMC]);
+      const tmp = xlParseNum(r[iTMP]);
       const ttc = tmf + tmc + tmp;
       Store.addCliente({ nome, mensalidade, tmf, tmc, tmp, ttc, horasVendidas: ttc });
       count++;
@@ -394,12 +451,17 @@ function xlImportar() {
     showToast(`✅ ${count} cliente(s) importado(s)!`, 'success');
 
   } else {
-    const iCliente = xlCol(headers, 'Cliente', 'Nome', 'Empresa');
-    const iColab   = xlCol(headers, 'Colaborador', 'Usuario', 'Usuário', 'User', 'Funcionario');
-    const iMin     = xlCol(headers, 'Minutos', 'Tempo', 'Duracao', 'Duração', 'Horas');
-    const iData    = xlCol(headers, 'Data', 'Date', 'Dia');
+    const iCliente = xlCol(headers,
+      'Cliente', 'Nome', 'Empresa', 'Nome Empresa', 'Razao Social', 'Razão Social'
+    );
+    const iColab = xlCol(headers, 'Colaborador', 'Usuario', 'Usuário', 'User', 'Funcionario', 'Responsavel');
+    const iMin   = xlCol(headers, 'Minutos', 'Tempo', 'Duracao', 'Duração', 'Horas', 'Hrs');
+    const iData  = xlCol(headers, 'Data', 'Date', 'Dia', 'Competencia', 'Competência');
 
-    if (iCliente < 0) { showToast('Coluna "Cliente" não encontrada', 'error'); return; }
+    if (iCliente < 0) {
+      showToast(`Coluna de cliente não encontrada. Cabeçalhos: ${headers.slice(0,6).join(', ')}`, 'error');
+      return;
+    }
 
     const clientes = Store.getClientes();
     let count = 0, skip = 0;
@@ -409,14 +471,20 @@ function xlImportar() {
       const cliente = clientes.find(c => xlNorm(c.nome) === xlNorm(nomeCliente));
       if (!cliente) { skip++; return; }
 
-      let minutos = parseFloat(String(r[iMin] ?? '').replace(',','.')) || 0;
-      // If column is "Horas", convert to minutes
+      let minutos = xlParseNum(r[iMin]);
       const hColName = xlNorm(headers[iMin] || '');
-      if (hColName === 'horas' || hColName === 'hora') minutos = minutos * 60;
+      if (hColName === 'horas' || hColName === 'hora' || hColName === 'hrs') minutos = minutos * 60;
 
       const colaborador = String(r[iColab] ?? 'Importado').trim() || 'Importado';
+      // For dates: with cellDates:false, dates are Excel serial numbers
       const rawDate = r[iData];
-      const data = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+      let data = new Date().toISOString();
+      if (rawDate) {
+        const d = (typeof rawDate === 'number')
+          ? new Date(Math.round((rawDate - 25569) * 86400 * 1000)) // Excel serial → JS date
+          : new Date(rawDate);
+        if (!isNaN(d.getTime())) data = d.toISOString();
+      }
       Store.addApontamento({ clienteId: cliente.id, colaborador, minutos: Math.round(minutos), data });
       count++;
     });
