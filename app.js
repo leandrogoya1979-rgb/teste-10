@@ -172,13 +172,25 @@ function updateTimerUI() {
   }
 }
 
-// ── Clientes CRUD ─────────────────────────────────────────────────────────────
+// ── Clientes CRUD ─────────────────────────────────────────────────────────────────
+function calcTTC() {
+  const tmf = parseFloat(document.getElementById('c-tmf')?.value) || 0;
+  const tmc = parseFloat(document.getElementById('c-tmc')?.value) || 0;
+  const tmp = parseFloat(document.getElementById('c-tmp')?.value) || 0;
+  const ttc = tmf + tmc + tmp;
+  const el = document.getElementById('c-ttc-display');
+  if (el) el.textContent = ttc % 1 === 0 ? ttc + 'h' : ttc.toFixed(1) + 'h';
+}
+
 function addCliente() {
   const nome = document.getElementById('c-nome').value.trim();
   const mensalidade = parseFloat(document.getElementById('c-mensalidade').value) || 0;
-  const horasVendidas = parseFloat(document.getElementById('c-horas').value) || 0;
+  const tmf = parseFloat(document.getElementById('c-tmf').value) || 0;
+  const tmc = parseFloat(document.getElementById('c-tmc').value) || 0;
+  const tmp = parseFloat(document.getElementById('c-tmp').value) || 0;
+  const ttc = tmf + tmc + tmp;
   if (!nome) { showToast('Informe o nome do cliente', 'error'); return; }
-  Store.addCliente({ nome, mensalidade, horasVendidas });
+  Store.addCliente({ nome, mensalidade, tmf, tmc, tmp, ttc, horasVendidas: ttc });
   showToast('✅ Cliente cadastrado!', 'success');
   render();
 }

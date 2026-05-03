@@ -237,32 +237,75 @@ function viewClientes() {
     <div class="section-header">
       <div><div class="section-title">➕ Novo Cliente</div></div>
     </div>
+
     <div class="form-row">
       <div class="form-group"><label class="form-label">Nome do Cliente</label>
         <input id="c-nome" class="form-control" placeholder="Ex: Empresa ABC Ltda" /></div>
       <div class="form-group"><label class="form-label">Mensalidade (R$)</label>
         <input id="c-mensalidade" class="form-control" type="number" min="0" placeholder="0,00" /></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Horas Vendidas/Mês</label>
-        <input id="c-horas" class="form-control" type="number" min="0" placeholder="Ex: 10" /></div>
-      <div style="display:flex;align-items:flex-end;padding-bottom:16px">
-        <button class="btn btn-primary" onclick="addCliente()" style="width:100%;justify-content:center">Cadastrar Cliente</button>
+
+    <div class="ttc-block">
+      <div class="ttc-legend">
+        <span class="ttc-legend-item tmf">TMF — Tempo Médio Fiscal</span>
+        <span class="ttc-legend-sep">+</span>
+        <span class="ttc-legend-item tmc">TMC — Tempo Médio Contábil</span>
+        <span class="ttc-legend-sep">+</span>
+        <span class="ttc-legend-item tmp">TMP — Tempo Médio Pessoal</span>
+        <span class="ttc-legend-sep">=</span>
+        <span class="ttc-legend-item ttc">TTC — Total Contratado</span>
+      </div>
+      <div class="ttc-inputs">
+        <div class="form-group">
+          <label class="form-label ttc-label tmf-label">⚖️ TMF (horas)</label>
+          <input id="c-tmf" class="form-control ttc-input" type="number" min="0" step="0.5" placeholder="0" oninput="calcTTC()" />
+        </div>
+        <div class="ttc-op">+</div>
+        <div class="form-group">
+          <label class="form-label ttc-label tmc-label">📒 TMC (horas)</label>
+          <input id="c-tmc" class="form-control ttc-input" type="number" min="0" step="0.5" placeholder="0" oninput="calcTTC()" />
+        </div>
+        <div class="ttc-op">+</div>
+        <div class="form-group">
+          <label class="form-label ttc-label tmp-label">👤 TMP (horas)</label>
+          <input id="c-tmp" class="form-control ttc-input" type="number" min="0" step="0.5" placeholder="0" oninput="calcTTC()" />
+        </div>
+        <div class="ttc-op">=</div>
+        <div class="form-group">
+          <label class="form-label ttc-label ttc-label-gold">🏆 TTC (total)</label>
+          <div id="c-ttc-display" class="form-control ttc-result">0h</div>
+        </div>
       </div>
     </div>
+
+    <button class="btn btn-primary" onclick="addCliente()" style="width:100%;justify-content:center;margin-top:4px">Cadastrar Cliente</button>
   </div>
+
   <div class="card">
     <div class="section-header">
       <div><div class="section-title">🏢 Carteira de Clientes</div><div class="section-sub">${list.length} cliente(s) cadastrado(s)</div></div>
     </div>
     ${list.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th>Mensalidade</th><th>Horas Vendidas</th><th>Horas Gastas</th><th>Ações</th></tr></thead>
+      <thead><tr>
+        <th>Cliente</th>
+        <th>Mensalidade</th>
+        <th style="color:#60a5fa">TMF</th>
+        <th style="color:#34d399">TMC</th>
+        <th style="color:#f472b6">TMP</th>
+        <th style="color:var(--gold)">TTC</th>
+        <th>Horas Gastas</th>
+        <th>Ações</th>
+      </tr></thead>
       <tbody>${list.map(c => {
         const mins = Store.getTotalMinutosCliente(c.id);
+        const ttc = (c.tmf||0) + (c.tmc||0) + (c.tmp||0);
         return `<tr>
           <td><strong>${c.nome}</strong></td>
           <td>${fmt.brl(c.mensalidade)}</td>
-          <td>${c.horasVendidas}h</td>
+          <td><span class="badge" style="background:rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.25)">${c.tmf||0}h</span></td>
+          <td><span class="badge" style="background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25)">${c.tmc||0}h</span></td>
+          <td><span class="badge" style="background:rgba(244,114,182,0.12);color:#f472b6;border:1px solid rgba(244,114,182,0.25)">${c.tmp||0}h</span></td>
+          <td><span class="badge badge-gold">${ttc}h</span></td>
           <td>${fmt.hrs(mins)}</td>
           <td><button class="btn btn-danger btn-icon" onclick="removeCliente('${c.id}')" title="Excluir">🗑</button></td>
         </tr>`;

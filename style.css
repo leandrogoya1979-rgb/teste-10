@@ -531,3 +531,68 @@ td { padding: 14px 16px; font-size: 14px; color: var(--text-primary); vertical-a
   .stats-grid { grid-template-columns: 1fr; }
   .role-selector { grid-template-columns: 1fr; }
 }
+
+/* ── TTC Block ── */
+.ttc-block {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 20px 8px;
+  margin-bottom: 16px;
+}
+
+.ttc-legend {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600;
+}
+
+.ttc-legend-sep {
+  color: var(--text-muted); font-size: 16px; font-weight: 700; padding: 0 2px;
+}
+
+.ttc-legend-item {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.ttc-legend-item.tmf { background: rgba(96,165,250,0.12); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+.ttc-legend-item.tmc { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+.ttc-legend-item.tmp { background: rgba(244,114,182,0.12); color: #f472b6; border: 1px solid rgba(244,114,182,0.25); }
+.ttc-legend-item.ttc { background: var(--gold-glow); color: var(--gold); border: 1px solid rgba(245,200,66,0.3); }
+
+.ttc-inputs {
+  display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap;
+}
+
+.ttc-inputs .form-group { flex: 1; min-width: 100px; margin-bottom: 12px; }
+
+.ttc-op {
+  font-size: 22px; font-weight: 800; color: var(--text-muted);
+  padding-bottom: 18px; flex-shrink: 0; line-height: 1;
+}
+
+.ttc-input { text-align: center; font-weight: 700; font-size: 16px; }
+
+.ttc-label { font-size: 11px !important; }
+.tmf-label { color: #60a5fa !important; }
+.tmc-label { color: #34d399 !important; }
+.tmp-label { color: #f472b6 !important; }
+.ttc-label-gold { color: var(--gold) !important; }
+
+.ttc-result {
+  text-align: center; font-weight: 900; font-size: 18px;
+  color: var(--gold);
+  background: var(--gold-glow) !important;
+  border-color: rgba(245,200,66,0.3) !important;
+  cursor: default; pointer-events: none;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 600px) {
+  .ttc-inputs { flex-direction: column; align-items: stretch; }
+  .ttc-op { padding-bottom: 0; padding-top: 4px; text-align: center; }
+  .ttc-inputs .form-group { min-width: unset; }
+  .ttc-legend { gap: 4px; }
+}
