@@ -71,6 +71,10 @@ function render() {
   if (route === 'timer') {
     updateTimerUI();
   }
+  
+  if (route === 'apontamentos') {
+    renderCharts();
+  }
 }
 
 window.addEventListener('hashchange', render);
@@ -498,4 +502,97 @@ function xlImportar() {
 
   xlCancelar();
   render();
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+function renderCharts() {
+  const ctxColab = document.getElementById('chart-colab');
+  const ctxClientes = document.getElementById('chart-clientes');
+  if (!ctxColab || !ctxClientes) return;
+
+  const apontamentos = Store.getApontamentos();
+  const clientesInfo = Store.getClientes();
+
+  // ── Top 3 Colaboradores ──
+  const colabMap = {};
+  apontamentos.forEach(a => {
+    colabMap[a.colaborador] = (colabMap[a.colaborador] || 0) + a.minutos;
+  });
+  const colabSorted = Object.entries(colabMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  const colabLabels = colabSorted.map(c => c[0]);
+  const colabData = colabSorted.map(c => c[1] / 60);
+
+  // Update Podium
+  const podium = document.getElementById('colab-podium');
+  const medals = ['🥇 Ouro', '🥈 Prata', '🥉 Bronze'];
+  const colors = ['#fbbf24', '#94a3b8', '#b45309'];
+  podium.innerHTML = colabSorted.map((c, i) => `
+    <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);padding:6px 12px;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:6px">
+      <span style="color:${colors[i]}">${medals[i]}</span>
+      <strong style="color:var(--text-primary)">${c[0]}</strong>
+      <span style="color:var(--text-muted)">(${fmt.h(c[1] / 60)})</span>
+    </div>
+  `).join('');
+
+  new Chart(ctxColab, {
+    type: 'bar',
+    data: {
+      labels: colabLabels,
+      datasets: [{
+        label: 'Horas',
+        data: colabData,
+        backgroundColor: ['rgba(251,191,36,0.8)', 'rgba(148,163,184,0.8)', 'rgba(180,83,9,0.8)'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+      }
+    }
+  });
+
+  // ── Top 10 Clientes ──
+  const cliMap = {};
+  apontamentos.forEach(a => {
+    cliMap[a.clienteId] = (cliMap[a.clienteId] || 0) + a.minutos;
+  });
+  const cliSorted = Object.entries(cliMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  
+  const cliLabels = cliSorted.map(c => {
+    const obj = clientesInfo.find(x => x.id === c[0]);
+    let nome = obj ? obj.nome : 'Desconhecido';
+    return nome.length > 20 ? nome.substring(0, 20) + '…' : nome;
+  });
+  const cliData = cliSorted.map(c => c[1] / 60);
+
+  new Chart(ctxClientes, {
+    type: 'bar',
+    data: {
+      labels: cliLabels,
+      datasets: [{
+        label: 'Horas',
+        data: cliData,
+        backgroundColor: 'rgba(96, 165, 250, 0.7)',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y', // horizontal bar
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+        y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } } }
+      }
+    }
+  });
 }

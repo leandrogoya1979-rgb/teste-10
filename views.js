@@ -217,34 +217,6 @@ function viewDashboard() {
     </div>` : ''}
   </div>
 
-  <div class="card">
-    <div class="section-header" style="margin-bottom:20px">
-      <div><div class="section-title">📊 Rankings & Performance</div><div class="section-sub">Top 10 clientes por horas · Top 3 colaboradores</div></div>
-      <button class="btn btn-secondary" onclick="navigate('apontamentos')">Ver apontamentos</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:24px;align-items:start">
-
-      <!-- ── Top 3 Colaboradores (vertical) ── -->
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">🏆 Top 3 Colaboradores</div>
-        <div style="position:relative;height:260px">
-          <canvas id="chart-colab"></canvas>
-        </div>
-        <div id="colab-podium" style="display:flex;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap"></div>
-      </div>
-
-      <!-- ── Top 10 Clientes (horizontal) ── -->
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">⏱ Top 10 Clientes por Horas Utilizadas</div>
-        <div style="position:relative;height:260px">
-          <canvas id="chart-clientes"></canvas>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
   <div class="card" style="margin-top:20px">
     <div class="section-header">
       <div><div class="section-title">📋 Últimos Apontamentos</div></div>
@@ -404,7 +376,33 @@ function viewApontamentosTable(list, mini) {
 
 function viewApontamentos() {
   const list = Store.getApontamentos().slice().reverse();
-  return `<div class="card">
+  return `
+  <div class="card" style="margin-bottom:20px">
+    <div class="section-header" style="margin-bottom:20px">
+      <div><div class="section-title">📊 Rankings & Performance</div><div class="section-sub">Top 10 clientes por horas · Top 3 colaboradores</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:24px;align-items:start">
+      <!-- ── Top 3 Colaboradores (vertical) ── -->
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">🏆 Top 3 Colaboradores</div>
+        <div style="position:relative;height:260px">
+          <canvas id="chart-colab"></canvas>
+        </div>
+        <div id="colab-podium" style="display:flex;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- ── Top 10 Clientes (horizontal) ── -->
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">⏱ Top 10 Clientes por Horas Utilizadas</div>
+        <div style="position:relative;height:260px">
+          <canvas id="chart-clientes"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="section-header">
       <div><div class="section-title">📋 Todos os Apontamentos</div><div class="section-sub">${list.length} registro(s)</div></div>
     </div>
