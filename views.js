@@ -120,10 +120,15 @@ function viewDashboard() {
   const clientes = Store.getClientes();
   const minutosMes = Store.getMinutosMes();
   const config = Store.getConfig();
-  const custoHora = Store.getCustoHora();
+  const r = Store.calcConfig();
+  const custoHora = r.custoHora;
   const custoMes = (minutosMes / 60) * custoHora;
   const receitaMes = clientes.reduce((s, c) => s + (c.mensalidade || 0), 0);
   const lucro = receitaMes - custoMes;
+  // Potencial de faturamento = valor de venda da hora × horas mínimas performadas
+  const potencialFaturamento  = r.valorVenda * r.horasMinimas;
+  // Total de receita possível = valor de venda da hora × horas contratadas pela companhia
+  const totalReceitaPossivel  = r.valorVenda * r.horasCompanhia;
 
   return `
   <div class="stats-grid">
@@ -166,10 +171,25 @@ function viewDashboard() {
       <div><div class="section-title">⚙️ Configuração do Escritório</div></div>
     </div>
     ${config.custoFixo > 0 ? `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-      <div><div class="stat-label">Custo Fixo Mensal</div><div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-top:4px">${fmt.brl(config.custoFixo)}</div></div>
-      <div><div class="stat-label">Horas Produtivas</div><div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-top:4px">${config.horasUteis}h</div></div>
-      <div><div class="stat-label">Custo/Hora</div><div style="font-size:18px;font-weight:700;color:var(--gold);margin-top:4px">${fmt.brl(custoHora)}</div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:${r.horasMinimas > 0 ? '0' : '12px'}">
+      <div>
+        <div class="stat-label">Custo Fixo Mensal</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-top:4px">${fmt.brl(config.custoFixo)}</div>
+      </div>
+      <div>
+        <div class="stat-label">Horas Mínimas Performadas</div>
+        <div style="font-size:18px;font-weight:700;color:${r.horasMinimas > 0 ? 'var(--text-primary)' : 'var(--red)'};margin-top:4px">${r.horasMinimas > 0 ? r.horasMinimas.toLocaleString('pt-BR') + 'h' : '—'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Abaixo disso = 🚩 red flag</div>
+      </div>
+      <div>
+        <div class="stat-label">Custo/Hora</div>
+        <div style="font-size:18px;font-weight:700;color:var(--gold);margin-top:4px">${fmt.brl(custoHora)}</div>
+      </div>
+      <div>
+        <div class="stat-label">Potencial de Faturamento</div>
+        <div style="font-size:18px;font-weight:700;color:var(--green);margin-top:4px">${fmt.brl(potencialFaturamento)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Valor venda × horas mínimas</div>
+      </div>
     </div>` : `
     <div class="empty-state">
       <div class="empty-icon">⚙️</div>
@@ -177,9 +197,55 @@ function viewDashboard() {
       <div class="empty-sub">Acesse Custo do Escritório para começar</div>
       <button class="btn btn-primary" style="margin-top:16px" onclick="navigate('config')">Configurar agora →</button>
     </div>`}
+
+    ${config.custoFixo > 0 && r.horasCompanhia > 0 ? `
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+                  background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.03));
+                  border:1px solid rgba(34,197,94,0.2);border-radius:var(--radius);padding:18px 22px">
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:4px">💎 Total de Receita Possível</div>
+          <div style="font-size:28px;font-weight:900;color:var(--green)">${fmt.brl(totalReceitaPossivel)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Valor de venda da hora × Horas contratadas pela companhia</div>
+        </div>
+        <div style="text-align:right;font-size:13px;color:var(--text-secondary);line-height:2">
+          <div>Valor/hora: <strong style="color:var(--green)">${fmt.brl(r.valorVenda)}</strong></div>
+          <div>Horas contratadas: <strong>${r.horasCompanhia.toLocaleString('pt-BR')}h</strong></div>
+          <div>Markup: <strong>${config.markup || 0}×</strong></div>
+        </div>
+      </div>
+    </div>` : ''}
   </div>
 
   <div class="card">
+    <div class="section-header" style="margin-bottom:20px">
+      <div><div class="section-title">📊 Rankings & Performance</div><div class="section-sub">Top 10 clientes por horas · Top 3 colaboradores</div></div>
+      <button class="btn btn-secondary" onclick="navigate('apontamentos')">Ver apontamentos</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:24px;align-items:start">
+
+      <!-- ── Top 3 Colaboradores (vertical) ── -->
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">🏆 Top 3 Colaboradores</div>
+        <div style="position:relative;height:260px">
+          <canvas id="chart-colab"></canvas>
+        </div>
+        <div id="colab-podium" style="display:flex;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- ── Top 10 Clientes (horizontal) ── -->
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:16px;text-align:center">⏱ Top 10 Clientes por Horas Utilizadas</div>
+        <div style="position:relative;height:260px">
+          <canvas id="chart-clientes"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
     <div class="section-header">
       <div><div class="section-title">📋 Últimos Apontamentos</div></div>
       <button class="btn btn-secondary" onclick="navigate('apontamentos')">Ver todos</button>
@@ -187,6 +253,7 @@ function viewDashboard() {
     ${viewApontamentosTable(Store.getApontamentos().slice(-5).reverse(), true)}
   </div>`;
 }
+
 
 // ── Timer Colaborador ────────────────────────────────────────────────────────
 function viewTimer(sessao) {
@@ -296,7 +363,7 @@ function viewClientes() {
         <th style="color:#34d399">TMC</th>
         <th style="color:#f472b6">TMP</th>
         <th style="color:var(--gold)">TTC</th>
-        <th>Horas Gastas</th>
+        <th>Horas Utilizadas no Mês</th>
         <th>Ações</th>
       </tr></thead>
       <tbody>${list.map(c => {
